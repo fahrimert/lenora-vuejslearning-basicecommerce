@@ -6,7 +6,7 @@
    
                 
                     <h2    text-subtitle1--mobile border-b style="height: fit-content; font-size: 18px; font-weight: 400; color: #1f2937; letter-spacing: -0.015em"  >
-                          Ürün Yönetimi
+                          Ürün Listesi
                         </h2>
    <div class="column col-grow  ">
   <div >
@@ -20,35 +20,7 @@
     </div>
   </div>
 
- <div class="row  ">
-  <div >
-    <q-card class=" row  q-pa-lg">
-            <q-tabs
-          dense
-          class="text-grey  row"
-          active-color="primary"
-          indicator-color="primary"
-          align="justify"
-          narrow-indicator
-        >
-       <q-btn outline rounded  color="primary" @click="producAddTrigger" no-caps>
-Ürün Ekle
 
-    </q-btn>
-    <q-tab>   
-            <q-btn  unelevated rounded color="primary"  class="text-none"  @click="updateProductTrigger"  no-caps  >
-      
-Ürün Güncelle
-    </q-btn>     
-
-    </q-tab>
-      </q-tabs>
-    </q-card>
-
-  </div>
-
-
-</div>
 
 </div>
    
@@ -56,8 +28,8 @@
       </q-card>
 <div class="column col-grow q-pa-md q-pa-md-lg">
   <div class="column items-start justify-between q-mb-md q-mb-lg">
-    <h2 class="text-h3 text-md-h5 text-dark">
-      Ürünler
+    <h2 class="text-h5 text-md-h5 text-dark">
+      Ürünler Listesi
     </h2>
 
     <!-- loading -->
@@ -71,53 +43,55 @@
     </div>
   </div>
 
-  <!-- ürün listesi -->
-  <q-list bordered separator v-if="products.length" >
- <div class="row q-col-gutter-md  items-stretch">
+ <q-table
+  title="Ürünler"
+  :rows="filteredProducts"
+  :columns="columns"
+  row-key="id"
+  :filter="filter"
+>
+  <template v-slot:top>
+    <q-input
+      dense
+      debounce="300"
+      v-model="filter"
+      placeholder="Ara..."
+      clearable
+    />
+<q-select
+  v-model="selectedCategory"
+  :options="categories.map(c => ({ label: c.name, value: c.id }))"
+  label="Kategori Seçiniz"
+  clearable
+/>
+  </template>
+</q-table>
 
-    <div
-      v-for="product in products"
-      :key="product.id"
-      class="col-xs-12 col-sm-6 col-lg-4  example-row-equal-width items-center"
-    >
-      <q-card
-        flat
-        bordered
-        class="bg-grey-1 cursor-pointer rounded-borders q-pa-md flex flex-center column"
-      >
-      <SingleProductComponen
-      :products = "products"
-
-      :product = "product"
-        @delete="(id) => { products = products.filter(c => c.id.toString() !== id) }"
-      />
-  <!--       <SingleBrandComponent
-          :brand="brand"
-          :handleDelete="handleDelete"
-          @update="onUpdate"
-        /> -->
-      </q-card>
-    </div>
-
-  </div>
-  </q-list>
-
-  <!-- hiç ürün yoksa -->
-  <div v-else-if="!loading && !error" class="text-grey">
-    Henüz ürün bulunamadı.
-  </div>
 </div>
  
     </q-page-container >
 </template>
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
 import { accessToken } from 'src/boot/keycloak'
-import SingleProductComponen from './components/ProductComponents/SingleProductComponen.vue'
 import UpdateProductComponent from './components/ProductComponents/UpdateProductComponent.vue'
 import AddProductComponent from './components/ProductComponents/AddProductComponent.vue'
+import { Category } from './CategoryManagementPage.vue'
+
+
+const columns = [ 
+  { name: 'id', label: 'ID', field: 'id', sortable: true },
+  { name: 'name', label: 'Ürün Adı', field: 'name', sortable: true },
+  { name: 'brand', label: 'Marka', field: 'brand', sortable: true },
+  { name: 'price', label: 'Fiyat', field: 'price', sortable: true },
+  { name: 'category.name', label: 'Fiyat', field: 'price', sortable: true },
+
+
+]
+const filter = ref('')  // bu input ile bağlanacak
+const productId = ref('')  // bu input ile bağlanacak
 
 // Quasar instance
 const $q = useQuasar()
@@ -147,6 +121,35 @@ function updateProductTrigger () {
 )
 }
 
+export type Category = {
+      id: number,
+      name: string  | null    
+}
+
+
+
+async function fetchCategories() {
+  loading.value = true
+  try {
+    const res = await axios.get('http://localhost:8082/api/v1/categories/category/get-all-categories' , 
+        { headers: { Authorization: `Bearer ${accessToken.value}` } }
+    )
+    categories.value = res.data.data 
+  } catch (err: any) {
+    error.value = err.message || 'Veri çekilemedi'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchCategories()
+})
+
+
+const selectedCategory = ref<number | null>(null)
+
+
 
 export type Product = {
   id: number
@@ -164,6 +167,9 @@ export type Product = {
 
 const loading = ref(false)
 const products = ref<Product[]>([])   
+const categories = ref<Category[]>([])   
+
+console.log(products.value);
 const error = ref<string | null>(null)
 
 async function fetchProducts() {
@@ -180,7 +186,13 @@ async function fetchProducts() {
     loading.value = false
   }
 }
+const filteredProducts = computed(() => {
+  console.log(selectedCategory.value);
+  if (!selectedCategory.value) return products.value;
+  console.log(products.value.map(p => p.category));
+  return products.value.filter(p => p.category.id == selectedCategory.value.value )
 
+})
 // sayfa açılınca yükle
 onMounted(async () => {
   await fetchProducts()

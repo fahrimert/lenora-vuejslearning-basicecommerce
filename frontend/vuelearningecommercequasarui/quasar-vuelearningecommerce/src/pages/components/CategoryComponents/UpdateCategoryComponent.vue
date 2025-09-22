@@ -6,15 +6,25 @@
 >
 
 <q-card-section class="bg-grey-1 q-pa-md border-b">
-        <div class="text-h6 text-dark">Kullanıcı Yönetimi</div>
+        <div class="text-h6 text-dark">Kategori Güncelle</div>
       </q-card-section>
 <q-card-section>
 
-          <q-scroll-area class=" bg-white p-4 rounded-lg shadow-md"
-          style="height: 500px;"
-          >
+ 
     <form @submit.prevent="handleSubmit(onSubmit)()" class="column q-gutter-md">
         <div class="q-gutter-md  column full-width " > 
+<q-select
+  v-model="categoryId"
+  :options="categories"          
+  option-value="id"           
+  option-label="name"        
+  filled
+  label="Kategori Seçiniz"
+  emit-value                   
+  map-options                 
+  use-chips                   
+  class="w-full rounded-xl"
+/>
  <q-input
           v-model="name"
           label="Ürün İsmi"
@@ -25,7 +35,7 @@
           dense
                outlined
         />
-
+<!-- 
         <q-input
           v-model="brand"
           label="ürün Markası"
@@ -33,8 +43,8 @@
   :error-message="brandError"
           dense
                       outlined
-        />
-
+        /> -->
+<!-- 
 <q-input          v-model="price"
           label="Ürün Fiyatı"
      :error="!!priceError"
@@ -57,7 +67,7 @@
   :error-message="descriptionError"
           dense
                       outlined
-        />
+        /> -->
 <q-btn label="Kaydet" type="submit" unelevated class="q-px-lg q-py-sm rounded-borders" color="primary" />
 
 
@@ -76,7 +86,6 @@
 
     </form>
 
-          </q-scroll-area>
       </q-card-section>
 
 
@@ -89,26 +98,19 @@ import {useField, useForm } from 'vee-validate'
 import { toFormValidator } from '@vee-validate/zod'
 import { z } from 'zod'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
-import { reactive } from 'vue'
+import { onMounted, Ref, ref } from 'vue'
 import axios from 'axios'
 import { accessToken, userr } from 'src/boot/keycloak'
+import { Category } from 'src/pages/CategoryManagementPage.vue'
 const schema = z.object({
   name: z.string().min(3, "En az 3 karakter"),
-  brand: z.string().min(3, "En az 3 karakter"),
-  price: z.string().min(3, "Geçerli email girin"),
-  inventory: z.string().min(2 , "Geçerli Sayı giriniz "),
-  description: z.string().min(1, "Rol Seçilmeli"),
 })
 const { handleSubmit } = useForm({
   validationSchema: toFormValidator(schema)
 })
+const props = defineProps<{ categories: Ref<Category[]> }>()
 
-const { value: name, errorMessage: nameError } = useField('name')
-const { value: brand, errorMessage: brandError } = useField('brand')
-const { value: inventory, errorMessage: inventoryError } = useField('inventory')
-const { value: price, errorMessage: priceError } = useField('price')
-
-const { value: description, errorMessage: descriptionError } = useField('description')
+const { value: name, errorMessage: nameError } = useField<string | undefined>('name')
 
 
 
@@ -116,6 +118,44 @@ const $q = useQuasar()
 
 console.log(userr.value);
 console.log(accessToken.value);
+
+const categories = ref<Category[]>([])   // array olması daha doğru
+const error = ref<string | null>(null)
+// Veri çekme
+const loading = ref(false)
+const categoryId = ref("")
+
+
+async function fetchCategories() {
+  loading.value = true
+  try {
+    const res = await axios.get('http://localhost:8082/api/v1/categories/category/get-all-categories' , 
+        { headers: { Authorization: `Bearer ${accessToken.value}` } }
+    )
+    
+    console.log(res.data.data);
+    categories.value = res.data.data 
+
+
+
+    // backend response'a göre ayarla
+  } catch (err: any) {
+    error.value = err.message || 'Veri çekilemedi'
+  } finally {
+    loading.value = false
+  }
+}
+
+// sayfa açılınca yükle
+onMounted(() => {
+  fetchCategories()
+})
+
+
+
+
+
+
 const onSubmit = async (formData: any) => {
   console.log(formData);
   try {
@@ -125,21 +165,26 @@ const onSubmit = async (formData: any) => {
 Object.entries(formData).forEach(([key,value]) => form.append(key,value ))
     console.log(formData);
     console.log(accessToken.value);
-    await axios.post('http://localhost:8082/api/v1/products/create-products', {
+    console.log(categoryId.value);
+  const res=  await axios.put(`http://localhost:8082/api/v1/categories/category/${categoryId.value}/update`, {
       name:formData.name,
-      brand:formData.brand,
-      price:formData.price,
-      inventory:formData.inventory,
-      description:formData.description,
-
     } ,
         { headers: { Authorization: `Bearer ${accessToken.value}` } }
 
     )
+     const updatedCategory = res.data.data
+const index = props.categories.value.findIndex(c => c.id === updatedCategory.id)
+if (index !== -1) {
+  props.categories.value[index] = updatedCategory
+} else {
+  props.categories.value.push(updatedCategory)
+}
+    onDialogOK() 
+
   } catch (err: any) {
     console.log(err);
-    $q.notify({ type:'negative', message: err.response?.data?.message || err.message })
   }
+
 }
 defineEmits([
   // REQUIRED; need to specify some events that your

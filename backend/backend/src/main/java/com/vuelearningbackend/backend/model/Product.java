@@ -24,6 +24,8 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+
     private  String name;
     private  String brand;
     private  String description;
@@ -38,9 +40,9 @@ public class Product {
     @Nullable
     private  Category category;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "product",cascade = CascadeType.ALL,orphanRemoval = true)
-    private List<Images> images;
+//    @JsonIgnore
+//    @OneToMany(mappedBy = "product",cascade = CascadeType.ALL,orphanRemoval = true)
+//    private List<Images> images;
 
 
     public Product(String name, String brand, BigDecimal price, int inventory, String description, Category category) {

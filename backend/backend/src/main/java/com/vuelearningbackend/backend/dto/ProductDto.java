@@ -15,5 +15,5 @@ public class ProductDto {
     private BigDecimal price;
     private int inventory;
     private Category category;
-    private List<ImageDto> images;
+//    private List<ImageDto> images;
 }

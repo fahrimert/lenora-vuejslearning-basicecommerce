@@ -80,6 +80,7 @@ public class ProductController {
             Product theProduct = productService.updateProductById(productId,updateProductReqeust);
             return  ResponseEntity.ok(new ApiResponse("Update Product Success",theProduct));
         }catch (Exception e){
+            System.out.println(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse(e.getMessage(),null));
         }
     }

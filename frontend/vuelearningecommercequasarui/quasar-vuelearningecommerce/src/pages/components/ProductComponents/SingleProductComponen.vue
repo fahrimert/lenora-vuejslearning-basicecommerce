@@ -11,7 +11,7 @@
      </q-card-section>
        <q-card-section>
       <div class="text-h6 text-dark q-mb-md">
-        {{ product.name }}
+        Ürün İsmi: {{ product.name }}
       </div>
     </q-card-section>
       <q-card-section>
@@ -37,19 +37,92 @@
         </div>
       </slot>
     </q-card-section>
+
+
  </q-card>
- 
+
+   <q-btn class="h-8 w-8" @click="handleOpenDialog(product.id.toString())">
+
+Sil
+   </q-btn>
+
+
+
+   <q-dialog v-model="openDeleteDialog">
+      <q-card style="width: 400; border-radius: 16px; box-shadow: 0 4px 20px  rgba(0,0,0,0.1);" class="bg-white">
+        <q-card-section class="text-h6 q-pt-md q-pb-none">
+          <div class="text-h6">      Ürünü silmeye emin misiniz?
+</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none q-pb-md text-subtitle2 text-grey-8">
+      Bu işlem geri alınamaz. Ürünü silmek istediğinizden emin olun.
+        </q-card-section>
+
+        <q-card-actions align="right">
+         <q-btn
+        flat
+        label="İptal"
+        color="secondary"
+        @click="handleCloseDialog"
+      />
+      <q-btn
+        unelevated
+        color="negative"
+        label="Sil"
+        @click="() => { deleteProduct(productId); handleCloseDialog(); }"
+      />
+   </q-card-actions>
+      </q-card>
+    </q-dialog>
+
  </template>
  
  <script setup lang="ts">
- defineProps<{
+ const props = defineProps<{  
     product: Product
  }>()
- import { ref, computed } from 'vue'
-import { Product } from '../ProductManagementPage.vue'
+import axios from 'axios';
+import { accessToken } from 'src/boot/keycloak';
+import { Product } from 'src/pages/ProductManagementPage.vue';
+ import { ref } from 'vue'
  
  const openDeleteDialog = ref(false)
- 
+ const productId = ref<String>("")
+
+const emit = defineEmits<{
+  (e: 'delete', id: String): void
+}>()
+ async function handleOpenDialog(id:String) {
+  try {
+    productId.value = id
+    console.log(productId);
+    console.log(openDeleteDialog.value);
+    openDeleteDialog.value = true
+    // backend response'a göre ayarla
+  } catch (err: any) {
+    console.log(err.message);
+  } 
+}
+function handleCloseDialog() {
+  openDeleteDialog.value = false; // direkt kapat
+}
+async function deleteProduct(id:String) {
+  try {
+    const res = await axios.delete(`http://localhost:8082/api/v1/products/product/${id}/delete` , 
+        { headers: { Authorization: `Bearer ${accessToken.value}` } }
+    )
+
+    
+    emit('delete', id) 
+       handleCloseDialog()
+    console.log(res.data.data);
+    // backend response'a göre ayarla
+  } catch (err: any) {
+    console.log(err.message);
+  } 
+}
+
  </script>
  
  <style lang="scss" scoped>
